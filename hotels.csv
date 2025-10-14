@@ -1,0 +1,11 @@
+id,name,city,price_per_night,stars,rating,available_rooms
+1,Hotel Lumiere,Paris,85,3,4.1,5
+2,Le Petit Palace,Paris,120,4,4.5,2
+3,Parisian Comfort,Paris,95,3,4.0,3
+4,Hotel Nordica,Riga,70,3,4.2,4
+5,Old Town Inn,Riga,55,2,3.8,6
+6,SeaView Resort,Barcelona,140,4,4.6,1
+7,Skyline Suites,Barcelona,110,4,4.3,2
+8,Budget Stay,London,60,2,3.9,10
+9,Central Grand,London,150,5,4.8,1
+10,RiverSide Hotel,Amsterdam,98,3,4.0,5
