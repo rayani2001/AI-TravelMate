@@ -1,69 +1,70 @@
-
 import streamlit as st
 import pandas as pd
-import datetime
-from pathlib import Path
+from datetime import date
 
-st.set_page_config(page_title='AI TravelMate - Hotel Booking Prototype', layout='wide')
+# -----------------------------
+# APP HEADER
+# -----------------------------
+st.set_page_config(page_title="AI TravelMate", page_icon="🌍", layout="wide")
 
-st.title('AI TravelMate — Hotel Booking Prototype (Simulated)')
+st.title("🌍 AI TravelMate – Smart Hotel Booking Assistant")
+st.write("Welcome! Let’s help you find the perfect hotel for your trip ✈️")
 
-DATA_PATH = Path(__file__).parent / 'hotels.csv'
-df = pd.read_csv(DATA_PATH)
+# -----------------------------
+# LOAD DATA
+# -----------------------------
+@st.cache_data
+def load_hotels():
+    try:
+        return pd.read_csv("hotels.csv")
+    except FileNotFoundError:
+        return pd.DataFrame(columns=["Hotel", "City", "Price_per_night", "Rating", "Link"])
 
-# Sidebar: user preferences
-st.sidebar.header('Booking Preferences')
-city = st.sidebar.text_input('City', value='Paris')
-check_in = st.sidebar.date_input('Check-in date', value=datetime.date.today() + datetime.timedelta(days=7))
-check_out = st.sidebar.date_input('Check-out date', value=check_in + datetime.timedelta(days=2))
-max_price = st.sidebar.number_input('Max price per night (EUR)', value=120)
-min_rating = st.sidebar.slider('Minimum rating', 0.0, 5.0, 4.0, 0.1)
-min_stars = st.sidebar.selectbox('Minimum stars', [0,1,2,3,4,5], index=3)
+hotels_df = load_hotels()
 
-nights = (check_out - check_in).days
-if nights <= 0:
-    st.sidebar.error('Check-out must be after check-in.')
+# -----------------------------
+# USER INPUT
+# -----------------------------
+col1, col2, col3 = st.columns(3)
+with col1:
+    city = st.text_input("Enter destination city:")
+with col2:
+    check_in = st.date_input("Check-in date:", min_value=date.today())
+with col3:
+    nights = st.number_input("Number of nights:", min_value=1, max_value=30, step=1)
 
-# Simple LLM-like parsing: allow natural language ask (very simple rule-based)
-st.sidebar.markdown('---')
-nl_input = st.sidebar.text_area('Optional: Describe your preferences in one sentence (e.g., "3-star near center under 90 euros")', height=100)
-if nl_input:
-    st.sidebar.info('Parsed terms: ' + ', '.join([w for w in nl_input.replace(',', ' ').split() if len(w)>1][:6]))
+budget = st.slider("Your total budget (USD):", 50, 2000, 500)
 
-# Filter hotels by city, price, rating, stars
-results = df[df['city'].str.lower().str.contains(city.strip().lower())]
-results = results[results['price_per_night'] <= max_price]
-results = results[results['rating'] >= min_rating]
-results = results[results['stars'] >= min_stars]
+# -----------------------------
+# AI HOTEL RECOMMENDER
+# -----------------------------
+if st.button("🔍 Find Hotels"):
+    if city.strip() == "":
+        st.warning("Please enter a destination city.")
+    else:
+        results = hotels_df[hotels_df["City"].str.contains(city, case=False, na=False)]
 
-st.subheader(f'Search results for "{city}" — {len(results)} hotels found')
-if results.empty:
-    st.info('No hotels match your filters. Try increasing price or lowering rating/stars.')
-else:
-    # Ranking score: combine rating, stars, price into a simple score
-    results = results.copy()
-    results['score'] = (results['rating'] * 2 + results['stars']) / (results['price_per_night'] / 50)
-    results = results.sort_values(by='score', ascending=False)
+        if results.empty:
+            st.error("❌ Sorry, no hotels found for that destination.")
+        else:
+            st.success(f"✅ Found {len(results)} hotels in {city.title()}")
+            for i, row in results.iterrows():
+                total_price = row["Price_per_night"] * nights
+                if total_price <= budget:
+                    st.markdown(f"""
+                    ### 🏨 {row['Hotel']}
+                    - 📍 Location: {row['City']}
+                    - 💰 Price per night: **${row['Price_per_night']}**
+                    - ⭐ Rating: {row['Rating']}
+                    - 📅 Total for {nights} nights: **${total_price}**
+                    - 🔗 [Book Now]({row['Link']})
+                    ---
+                    """)
+            if not any(results["Price_per_night"] * nights <= budget):
+                st.info("All hotels found are above your budget 💸. Try increasing your budget!")
 
-    # Show top 3 suggestions
-    top = results.head(3)
-    for idx, row in top.iterrows():
-        st.markdown('---')
-        col1, col2 = st.columns([3,1])
-        with col1:
-            st.markdown(f"### {row['name']} — {int(row['stars'])}★ — €{row['price_per_night']} / night")
-            st.write(f"Rating: {row['rating']} — Available rooms: {row['available_rooms']}")
-            st.write('Short description: Comfortable stay with helpful staff and convenient location.')
-            st.write(f"Total for {nights} nights: €{row['price_per_night'] * max(1, nights)}")
-        with col2:
-            if st.button(f"Book {row['name']}", key=f"book_{row['id']}"):
-                if row['available_rooms'] > 0:
-                    # Simulated booking - update CSV (note: local only, not persistent across multiple app runs in deployed environments)
-                    df.loc[df['id'] == row['id'], 'available_rooms'] = row['available_rooms'] - 1
-                    df.to_csv(DATA_PATH, index=False)
-                    st.success(f"Booking simulated for {row['name']}. Confirmation ID: TM-{row['id']}{int(pd.Timestamp.now().timestamp()) % 10000}")
-                else:
-                    st.error('No rooms available.')
-    st.markdown('---')
-    st.write('Full results table:')
-    st.dataframe(results[['id','name','city','price_per_night','stars','rating','available_rooms','score']])
+# -----------------------------
+# FOOTER
+# -----------------------------
+st.markdown("---")
+st.caption("Developed by Rayani Minoli – AI TravelMate Project 💡")
