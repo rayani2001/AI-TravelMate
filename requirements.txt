@@ -1,5 +1,0 @@
-streamlit==1.30.0
-pandas==2.2.2
-pillow==10.2.0
-requests
-beautifulsoup4
